@@ -2,7 +2,14 @@
 import tailwindcss from '@tailwindcss/vite'
 import Aura from '@primeuix/themes/aura'
 export default defineNuxtConfig({
-  modules: ['@primevue/nuxt-module'],
+  modules: ['@primevue/nuxt-module', '@nuxtjs/supabase'],
+  supabase: {
+    redirectOptions: {
+      login: '/login',
+      callback: '/confirm',
+      exclude: ['/'],
+    }
+  },
   css: ['./app/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],

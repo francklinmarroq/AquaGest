@@ -1,0 +1,50 @@
+export interface Profile {
+    id: string
+    full_name: string | null
+    role: 'admin' | 'reader' | null
+    created_at: string
+}
+
+export const useProfile = () => {
+    const client = useSupabaseClient()
+    const user = useSupabaseUser()
+    const profile = useState<Profile | null>('profile', () => null)
+    const profileLoading = useState<boolean>('profile-loading', () => false)
+
+    const fetchProfile = async (userId?: string) => {
+        const u = user.value as any
+        const id = userId || u?.id || u?.sub
+
+        if (!id) {
+            profile.value = null
+            return null
+        }
+
+        if (profile.value && profile.value.id === id) return profile.value
+
+        profileLoading.value = true
+        try {
+            const { data, error } = await client
+                .from('profiles')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            if (!error && data) {
+                profile.value = data
+                return data
+            }
+        } catch (e) {
+            console.error('Error fetching profile:', e)
+        } finally {
+            profileLoading.value = false
+        }
+        return null
+    }
+
+    return {
+        profile,
+        profileLoading,
+        fetchProfile
+    }
+}
