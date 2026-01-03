@@ -7,6 +7,13 @@ client.auth.onAuthStateChange((event, session) => {
     router.push('/update-password')
   }
 })
+
+onMounted(() => {
+  // Manual check for invite/recovery token in hash
+  if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
+      router.push('/update-password')
+  }
+})
 </script>
 
 <template>

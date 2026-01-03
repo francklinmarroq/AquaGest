@@ -2,6 +2,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const user = useSupabaseUser()
     const { profile, fetchProfile } = useProfile()
 
+    // 0. Allow update-password route for invites
+    if (to.path === '/update-password') {
+        return
+    }
+
     // 1. If trying to reach login and already authenticated, redirect to home
     if (to.path === '/login') {
         if (user.value) {
