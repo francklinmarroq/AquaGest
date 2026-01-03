@@ -7,15 +7,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
         return
     }
 
-    // 0.5 Detect invite/recovery hash strategies on root or other pages
-    // If the user lands on /#access_token=...&type=invite, the middleware sees it.
-    if (to.hash && (to.hash.includes('type=invite') || to.hash.includes('type=recovery') || to.hash.includes('access_token'))) {
-        return navigateTo('/update-password' + to.hash)
-    }
-
-    // Robust Fallback: to.hash might be empty on initial client load in some versions/routers
-    if (process.client && window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token'))) {
-        return navigateTo('/update-password' + window.location.hash)
+    // 0.5 If there's an invite hash, let the request go to the root page
+    // The index.vue will handle waiting for Supabase to process the token
+    // and then redirect to update-password once session is established
+    if (to.path === '/' && process.client && window.location.hash && window.location.hash.includes('access_token')) {
+        return // Let it through - index.vue will handle the invite flow
     }
 
     // 1. If trying to reach login and already authenticated, redirect to home
