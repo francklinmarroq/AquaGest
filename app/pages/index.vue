@@ -7,8 +7,10 @@ const client = useSupabaseClient()
 // Fallback redirection logic in case middleware passes through
 onMounted(async () => {
   // Defense in depth: Check for invite hash here too (Child mounts before Parent)
-  if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
-      router.push('/update-password')
+  // Broadened check: include 'access_token' just in case 'type' is missing or different
+  if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token'))) {
+      // Explicitly pass the hash!
+      router.push('/update-password' + window.location.hash)
       return
   }
 
