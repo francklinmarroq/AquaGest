@@ -23,6 +23,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     // 2. If not authenticated, force login
     if (!user.value) {
+        // Critical: Do NOT redirect on server-side for root path.
+        // The invite link contains a hash (#access_token=...) which is NOT visible to the server.
+        // If we redirect here, the browser sees a 302 and drops the hash, breaking the invite flow.
+        // We let the client load, and the client-side middleware (which can see the hash) will handle it.
+        if (process.server && to.path === '/') {
+            return
+        }
+
         return navigateTo('/login')
     }
 
