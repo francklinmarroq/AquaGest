@@ -32,6 +32,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
             return
         }
 
+        // Also don't redirect on client-side if there's an invite hash
+        // index.vue will handle waiting for Supabase to process it
+        if (process.client && to.path === '/' && window.location.hash && window.location.hash.includes('access_token')) {
+            return
+        }
+
         return navigateTo('/login')
     }
 
