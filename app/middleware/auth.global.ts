@@ -13,6 +13,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
         return navigateTo('/update-password' + to.hash)
     }
 
+    // Robust Fallback: to.hash might be empty on initial client load in some versions/routers
+    if (process.client && window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
+        return navigateTo('/update-password' + window.location.hash)
+    }
+
     // 1. If trying to reach login and already authenticated, redirect to home
     if (to.path === '/login') {
         if (user.value) {
