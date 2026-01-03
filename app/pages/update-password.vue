@@ -6,7 +6,36 @@ const router = useRouter()
 const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
+const sessionLoading = ref(true)
 const errorMsg = ref('')
+
+// Wait for session to be established from the hash
+onMounted(() => {
+  // Give Supabase a moment to process the hash and establish session
+  const checkSession = () => {
+    if (user.value) {
+      sessionLoading.value = false
+    } else {
+      // If still no user after 3 seconds, something went wrong
+      setTimeout(() => {
+        if (!user.value) {
+          sessionLoading.value = false
+          errorMsg.value = 'No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de invitación.'
+        }
+      }, 3000)
+    }
+  }
+  
+  // Check immediately and watch for changes
+  checkSession()
+})
+
+// Also watch user for changes (Supabase might take a moment)
+watch(user, (newUser) => {
+  if (newUser) {
+    sessionLoading.value = false
+  }
+}, { immediate: true })
 
 const updatePassword = async () => {
   if (password.value !== confirmPassword.value) {
@@ -41,10 +70,18 @@ const updatePassword = async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-    <div class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+    <!-- Loading state while session establishes -->
+    <div v-if="sessionLoading" class="text-center">
+      <ProgressSpinner />
+      <p class="text-gray-600 mt-4">Verificando tu enlace de invitación...</p>
+    </div>
+
+    <!-- Password form (only shows when session is established) -->
+    <div v-else-if="user" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
       <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-gray-900">Bienvenido a AquaGest</h1>
         <p class="text-gray-600 mt-2">Por favor, establece tu contraseña para continuar.</p>
+        <p class="text-sm text-gray-500 mt-1">{{ user.email }}</p>
       </div>
 
       <form @submit.prevent="updatePassword" class="space-y-6">
@@ -84,6 +121,19 @@ const updatePassword = async () => {
           :loading="loading" 
         />
       </form>
+    </div>
+
+    <!-- Error state (session failed to establish) -->
+    <div v-else class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+      <i class="pi pi-times-circle text-red-500 text-5xl mb-4"></i>
+      <h2 class="text-xl font-bold text-gray-900 mb-2">Error de Autenticación</h2>
+      <p class="text-gray-600 mb-4">{{ errorMsg || 'No se pudo verificar tu enlace de invitación.' }}</p>
+      <Button 
+        label="Volver al Login" 
+        icon="pi pi-arrow-left" 
+        class="p-button-secondary" 
+        @click="router.push('/login')" 
+      />
     </div>
   </div>
 </template>
