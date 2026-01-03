@@ -7,6 +7,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
         return
     }
 
+    // 0.5 Detect invite/recovery hash strategies on root or other pages
+    // If the user lands on /#access_token=...&type=invite, the middleware sees it.
+    if (to.hash && (to.hash.includes('type=invite') || to.hash.includes('type=recovery'))) {
+        return navigateTo('/update-password' + to.hash)
+    }
+
     // 1. If trying to reach login and already authenticated, redirect to home
     if (to.path === '/login') {
         if (user.value) {
