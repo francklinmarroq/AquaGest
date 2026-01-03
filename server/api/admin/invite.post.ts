@@ -40,8 +40,9 @@ export default defineEventHandler(async (event) => {
             }
 
             try {
-                // Now decode
-                const decoded = Buffer.from(cookieValue, 'base64').toString()
+                // Now decode using cross-platform method (Cloudflare doesn't like Buffer)
+                const decoded = globalThis.atob ? globalThis.atob(cookieValue) : Buffer.from(cookieValue, 'base64').toString()
+
                 let accessToken = ''
 
                 if (decoded.startsWith('{') || decoded.startsWith('[')) {
