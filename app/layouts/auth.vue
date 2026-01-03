@@ -7,7 +7,7 @@
         </div>
       </div>
       <h2 class="mt-2 text-center text-3xl font-extrabold text-blue-900">
-        Aguas Terrasol
+        AquaGest
       </h2>
       <p class="mt-2 text-center text-sm text-gray-600">
         Plataforma de Gestión de Servicios

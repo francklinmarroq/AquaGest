@@ -10,7 +10,7 @@ export default defineNuxtConfig({
       exclude: ['/'],
     }
   },
-  css: ['./app/assets/css/main.css'],
+  css: ['./app/assets/css/main.css', 'primeicons/primeicons.css'],
   vite: {
     plugins: [tailwindcss()],
   },

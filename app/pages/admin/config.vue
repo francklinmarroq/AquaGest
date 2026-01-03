@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const client = useSupabaseClient()
+const client = useSupabaseClient<any>()
 const { currencySymbol, fetchSettings: fetchAppSettings, updateCurrencySymbol } = useAppSettings()
 
 // Pricing State
@@ -15,6 +15,12 @@ const loading = ref(true)
 // Settings State
 const useAverage = ref(true)
 const tempCurrency = ref('')
+
+// User Management State
+const users = ref<any[]>([])
+const inviteDialog = ref(false)
+const inviteForm = ref({ email: '', role: 'reader' })
+const inviting = ref(false)
 
 const fetchConfig = async () => {
   loading.value = true
@@ -45,7 +51,18 @@ const fetchConfig = async () => {
     useAverage.value = settingsData.value === true || settingsData.value === 'true'
   }
 
+  // Fetch users
+  await fetchUsers()
+
   loading.value = false
+}
+
+const fetchUsers = async () => {
+  const { data } = await client
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
+  users.value = data || []
 }
 
 const updatePrices = async () => {
@@ -87,6 +104,44 @@ const saveCurrency = async () => {
   }
 }
 
+const inviteUser = async () => {
+  if (!inviteForm.value.email) return
+
+  inviting.value = true
+  try {
+    await $fetch('/api/admin/invite', {
+      method: 'POST',
+      body: inviteForm.value
+    })
+    alert('Invitación enviada correctamente.')
+    inviteDialog.value = false
+    inviteForm.value = { email: '', role: 'reader' }
+    // Refresh list (new user won't appear until they accept or trigger runs, 
+    // but typically Auth creates a user record immediately on invite? 
+    // Yes, but profile trigger runs on INSERT to auth.users. 
+    // So we might need to wait or just refresh.)
+    setTimeout(fetchUsers, 1000) 
+  } catch (error: any) {
+    alert('Error al invitar: ' + (error.data?.message || error.message))
+  } finally {
+    inviting.value = false
+  }
+}
+
+const updateUserRole = async (user: any, newRole: string) => {
+  const { error } = await client
+    .from('profiles')
+    .update({ role: newRole })
+    .eq('id', user.id)
+  
+  if (error) {
+    alert('Error al actualizar rol.')
+    await fetchUsers() // Revert UI
+  } else {
+    user.role = newRole
+  }
+}
+
 onMounted(() => {
   fetchConfig()
 })
@@ -94,7 +149,9 @@ onMounted(() => {
 
 <template>
   <div class="card p-4 space-y-8">
-    <h1 class="text-2xl font-bold text-blue-900 border-b pb-2">Configuración del Sistema</h1>
+    <div class="flex items-center justify-between border-b pb-2">
+       <h1 class="text-2xl font-bold text-blue-900">Configuración del Sistema</h1>
+    </div>
 
     <!-- Global Settings -->
     <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -122,6 +179,42 @@ onMounted(() => {
             </div>
           </div>
       </div>
+    </section>
+
+    <!-- User Management -->
+    <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <i class="pi pi-users text-purple-600"></i>
+          Control de Usuarios
+        </h2>
+        <Button label="Invitar Usuario" icon="pi pi-user-plus" class="p-button-sm p-button-help" @click="inviteDialog = true" />
+      </div>
+      
+      <DataTable :value="users" :loading="loading" stripedRows paginator :rows="5" class="p-datatable-sm">
+        <Column field="email" header="Correo Electrónico">
+           <template #body="slotProps">
+             <span class="font-medium">{{ slotProps.data.email || 'Sin correo' }}</span>
+           </template>
+        </Column>
+        <Column field="role" header="Rol">
+          <template #body="slotProps">
+            <Select 
+              v-model="slotProps.data.role" 
+              :options="[{label: 'Administrador', value: 'admin'}, {label: 'Lector', value: 'reader'}]" 
+              optionLabel="label"
+              optionValue="value"
+              class="w-40" 
+              @change="(e: any) => updateUserRole(slotProps.data, e.value)"
+            />
+          </template>
+        </Column>
+        <Column field="created_at" header="Fecha Ingreso">
+          <template #body="slotProps">
+            {{ new Date(slotProps.data.created_at).toLocaleDateString() }}
+          </template>
+        </Column>
+      </DataTable>
     </section>
 
     <!-- Pricing Config -->
@@ -175,5 +268,23 @@ onMounted(() => {
         </DataTable>
       </section>
     </div>
+
+    <!-- Invite User Dialog -->
+    <Dialog v-model:visible="inviteDialog" header="Invitar Usuario" :style="{width: '400px'}" :modal="true">
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+          <label for="invite-email" class="font-bold">Correo Electrónico</label>
+          <InputText id="invite-email" v-model="inviteForm.email" placeholder="usuario@ejemplo.com" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="font-bold">Rol Asignado</label>
+          <Select v-model="inviteForm.role" :options="[{label: 'Administrador', value: 'admin'}, {label: 'Lector', value: 'reader'}]" optionLabel="label" optionValue="value" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancelar" class="p-button-text" @click="inviteDialog = false" />
+        <Button label="Enviar Invitación" icon="pi pi-send" :loading="inviting" @click="inviteUser" />
+      </template>
+    </Dialog>
   </div>
 </template>

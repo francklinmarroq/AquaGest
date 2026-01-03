@@ -12,6 +12,7 @@ const submitted = ref(false)
 const consumer = ref({
   id: null,
   full_name: '',
+  doc_number: '',
   address: '',
   phone: '',
   email: ''
@@ -39,7 +40,7 @@ const fetchConsumers = async () => {
 
 // Dialog actions
 const openNew = () => {
-  consumer.value = { id: null, full_name: '', address: '', phone: '', email: '' }
+  consumer.value = { id: null, full_name: '', doc_number: '', address: '', phone: '', email: '' }
   submitted.value = false
   consumerDialog.value = true
 }
@@ -61,6 +62,7 @@ const saveConsumer = async () => {
     if (consumer.value.id) {
       await client.from('consumers').update({
         full_name: consumer.value.full_name,
+        doc_number: consumer.value.doc_number,
         address: consumer.value.address,
         phone: consumer.value.phone,
         email: consumer.value.email
@@ -68,6 +70,7 @@ const saveConsumer = async () => {
     } else {
       await client.from('consumers').insert([{
         full_name: consumer.value.full_name,
+        doc_number: consumer.value.doc_number,
         address: consumer.value.address,
         phone: consumer.value.phone,
         email: consumer.value.email
@@ -134,6 +137,10 @@ onMounted(() => {
       <div class="field mb-4">
         <label for="name" class="font-bold block mb-2">Nombre Completo</label>
         <InputText id="name" v-model.trim="consumer.full_name" required="true" autofocus :class="{'p-invalid': submitted && !consumer.full_name}" />
+      </div>
+      <div class="field mb-4">
+        <label for="doc_number" class="font-bold block mb-2">Documento de Identidad (DPI/Cédula)</label>
+        <InputText id="doc_number" v-model.trim="consumer.doc_number" />
       </div>
       <div class="field mb-4">
         <label for="address" class="font-bold block mb-2">Dirección</label>

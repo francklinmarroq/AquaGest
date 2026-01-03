@@ -59,7 +59,9 @@ const saveMeter = async () => {
     if (meter.value.id) {
       await client.from('meters').update(meter.value).eq('id', meter.value.id)
     } else {
-      await client.from('meters').insert([meter.value])
+      // Create payload without ID to let DB autogenerate it
+      const { id, ...newMeter } = meter.value
+      await client.from('meters').insert([newMeter])
     }
     await fetchMeters()
     meterDialog.value = false
