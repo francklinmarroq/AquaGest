@@ -58,11 +58,12 @@ const fetchConfig = async () => {
 }
 
 const fetchUsers = async () => {
-  const { data } = await client
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-  users.value = data || []
+  try {
+    const data = await $fetch('/api/admin/users') as any[]
+    users.value = data || []
+  } catch (e) {
+    console.error('Error fetching users:', e)
+  }
 }
 
 const updatePrices = async () => {
@@ -209,9 +210,18 @@ onMounted(() => {
             />
           </template>
         </Column>
-        <Column field="created_at" header="Fecha Ingreso">
+        <Column header="Estado">
           <template #body="slotProps">
-            {{ new Date(slotProps.data.created_at).toLocaleDateString() }}
+            <div class="flex flex-col">
+                <Tag 
+                    :value="slotProps.data.confirmed_at ? 'Activo' : 'Pendiente'" 
+                    :severity="slotProps.data.confirmed_at ? 'success' : 'warn'" 
+                    class="w-fit mb-1"
+                />
+                <small class="text-xs text-gray-400">
+                    {{ new Date(slotProps.data.created_at).toLocaleDateString() }}
+                </small>
+            </div>
           </template>
         </Column>
       </DataTable>
