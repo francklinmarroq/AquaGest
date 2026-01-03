@@ -24,7 +24,8 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-    <ProgressSpinner v-if="profileLoading" />
+    <!-- Show spinner if loading OR if no user yet (waiting for redirect) -->
+    <ProgressSpinner v-if="!user || profileLoading" />
     
     <div v-else-if="!profile" class="text-center p-8 bg-white rounded-xl shadow-lg max-w-md mx-4">
       <i class="pi pi-times-circle text-red-500 text-5xl mb-4"></i>
