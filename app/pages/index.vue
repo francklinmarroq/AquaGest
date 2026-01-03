@@ -6,6 +6,12 @@ const client = useSupabaseClient()
 
 // Fallback redirection logic in case middleware passes through
 onMounted(async () => {
+  // Defense in depth: Check for invite hash here too (Child mounts before Parent)
+  if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
+      router.push('/update-password')
+      return
+  }
+
   if (user.value) {
     if (!profile.value) {
       await fetchProfile(user.value.id)
@@ -16,9 +22,8 @@ onMounted(async () => {
     } else if (profile.value?.role === 'reader') {
       router.push('/reader')
     }
-  } else {
-    router.push('/login')
-  }
+  } 
+  // Do NOT redirect to login here. Let auth.global.ts handle that.
 })
 </script>
 
