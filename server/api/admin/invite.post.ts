@@ -1,5 +1,54 @@
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { createError } from 'h3'
+import { Resend } from 'resend'
+
+// Send welcome email with credentials
+async function sendWelcomeEmail(email: string, tempPassword: string) {
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (!resendApiKey) {
+        console.warn('RESEND_API_KEY not configured - skipping email')
+        return
+    }
+
+    const resend = new Resend(resendApiKey)
+    const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://aquagest.pages.dev'
+
+    try {
+        await resend.emails.send({
+            from: 'AquaGest <noreply@aquagest.app>',
+            to: email,
+            subject: 'Bienvenido a AquaGest - Tus Credenciales de Acceso',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #0ea5e9, #2563eb); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="color: white; margin: 0;">AquaGest</h1>
+                        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0;">Control de Servicios</p>
+                    </div>
+                    <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <h2 style="color: #1e293b;">¡Bienvenido!</h2>
+                        <p style="color: #475569;">Se ha creado tu cuenta en AquaGest. Usa las siguientes credenciales para iniciar sesión:</p>
+                        
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                            <p style="margin: 0 0 10px;"><strong>Correo:</strong> ${email}</p>
+                            <p style="margin: 0;"><strong>Contraseña temporal:</strong> <code style="background: #fef3c7; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${tempPassword}</code></p>
+                        </div>
+                        
+                        <p style="color: #dc2626; font-size: 14px;">
+                            ⚠️ <strong>Importante:</strong> Deberás cambiar esta contraseña en tu primer inicio de sesión.
+                        </p>
+                        
+                        <a href="${siteUrl}/login" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">
+                            Iniciar Sesión
+                        </a>
+                    </div>
+                </div>
+            `
+        })
+        console.log(`Welcome email sent to ${email}`)
+    } catch (e) {
+        console.error('Failed to send welcome email:', e)
+    }
+}
 
 // Generate a random temporary password
 function generateTempPassword(length = 8): string {
@@ -107,6 +156,9 @@ export default defineEventHandler(async (event) => {
                     .eq('id', newUser.user.id)
             }
 
+            // Send welcome email with credentials
+            await sendWelcomeEmail(email, tempPassword)
+
             return { success: true, tempPassword, user: newUser }
         }
     }
@@ -154,6 +206,9 @@ export default defineEventHandler(async (event) => {
             .update({ must_change_password: true } as any)
             .eq('id', newUser.user.id)
     }
+
+    // Send welcome email with credentials
+    await sendWelcomeEmail(email, tempPassword)
 
     return { success: true, tempPassword, user: newUser }
 })
