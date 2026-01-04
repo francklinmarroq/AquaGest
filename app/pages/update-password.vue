@@ -38,7 +38,9 @@ const updatePassword = async () => {
     if (error) throw error
 
     // Clear the must_change_password flag via server API (uses service role)
-    await $fetch('/api/auth/clear-password-flag', { method: 'POST' })
+    console.log('[update-password] Calling clear-password-flag API...')
+    const flagResult = await $fetch('/api/auth/clear-password-flag', { method: 'POST' })
+    console.log('[update-password] API response:', flagResult)
 
     alert('Contraseña actualizada correctamente. ¡Bienvenido!')
     
