@@ -37,13 +37,8 @@ const updatePassword = async () => {
 
     if (error) throw error
 
-    // Clear the must_change_password flag
-    if (user.value) {
-      await client
-        .from('profiles')
-        .update({ must_change_password: false })
-        .eq('id', user.value.id)
-    }
+    // Clear the must_change_password flag via server API (uses service role)
+    await $fetch('/api/auth/clear-password-flag', { method: 'POST' })
 
     alert('Contraseña actualizada correctamente. ¡Bienvenido!')
     
