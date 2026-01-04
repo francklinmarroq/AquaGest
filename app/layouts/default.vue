@@ -140,8 +140,8 @@ body {
 <template>
   <div class="min-h-screen bg-slate-50 font-sans text-slate-900">
     <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 transition-all duration-300">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Menubar :model="items" class="py-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <Menubar :model="items" class="py-4">
           <template #start>
             <div class="flex items-center gap-4 mr-10 cursor-pointer group" @click="router.push('/')">
               <div class="bg-gradient-to-br from-sky-500 to-cyan-400 p-3.5 rounded-2xl shadow-lg shadow-sky-100 transition-transform group-hover:scale-105">
