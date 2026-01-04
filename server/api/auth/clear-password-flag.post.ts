@@ -2,40 +2,92 @@ import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { createError } from 'h3'
 
 export default defineEventHandler(async (event) => {
-    const user = await serverSupabaseUser(event)
+    const client = serverSupabaseServiceRole(event)
+    let userId: string | null = null
 
-    console.log('[clear-password-flag] Called for user:', user?.id)
-
-    if (!user) {
-        console.log('[clear-password-flag] No user found!')
-        throw createError({ statusCode: 401, message: 'Unauthorized' })
+    // Try to get user from serverSupabaseUser first
+    try {
+        const user = await serverSupabaseUser(event)
+        if (user?.id) {
+            userId = user.id
+            console.log('[clear-password-flag] Got user from serverSupabaseUser:', userId)
+        }
+    } catch (e) {
+        console.log('[clear-password-flag] serverSupabaseUser failed, trying fallback')
     }
 
-    const client = serverSupabaseServiceRole(event)
+    // Fallback: Extract token from cookies manually
+    if (!userId) {
+        const headers = getRequestHeaders(event)
+        let cookies: string[] = []
 
-    // First, let's check the current value
-    const { data: before } = await client
-        .from('profiles')
-        .select('must_change_password')
-        .eq('id', user.id)
-        .single()
+        if (Array.isArray(headers.cookie)) {
+            cookies = headers.cookie.flatMap(c => c.split(';'))
+        } else if (typeof headers.cookie === 'string') {
+            cookies = headers.cookie.split(';')
+        }
 
-    console.log('[clear-password-flag] Before update:', before)
+        cookies = cookies.map(c => c.trim())
 
-    // Clear the must_change_password flag for the current user
+        for (const cookieStr of cookies) {
+            if (!cookieStr.startsWith('sb-') || !cookieStr.includes('-auth-token=')) {
+                continue
+            }
+
+            const parts = cookieStr.split('=')
+            if (parts.length < 2) continue
+
+            let cookieValue = parts.slice(1).join('=')
+
+            if (cookieValue.startsWith('base64-')) {
+                cookieValue = cookieValue.slice(7)
+            }
+
+            try {
+                const decoded = globalThis.atob ? globalThis.atob(cookieValue) : Buffer.from(cookieValue, 'base64').toString()
+
+                let accessToken = ''
+
+                if (decoded.startsWith('{') || decoded.startsWith('[')) {
+                    const parsed = JSON.parse(decoded)
+                    if (Array.isArray(parsed)) accessToken = parsed[0]
+                    else if (parsed.access_token) accessToken = parsed.access_token
+                } else {
+                    accessToken = decoded
+                }
+
+                if (accessToken) {
+                    const { data: { user: manualUser } } = await client.auth.getUser(accessToken)
+                    if (manualUser?.id) {
+                        userId = manualUser.id
+                        console.log('[clear-password-flag] Got user from fallback:', userId)
+                        break
+                    }
+                }
+            } catch (e) {
+                // Ignore decode errors
+            }
+        }
+    }
+
+    if (!userId) {
+        console.error('[clear-password-flag] Could not get user ID')
+        throw createError({ statusCode: 401, message: 'Unauthorized - no user found' })
+    }
+
+    // Clear the must_change_password flag
     const { data, error } = await client
         .from('profiles')
         .update({ must_change_password: false } as any)
-        .eq('id', user.id)
+        .eq('id', userId)
         .select()
 
     if (error) {
-        console.error('[clear-password-flag] Error:', error)
+        console.error('[clear-password-flag] Update error:', error)
         throw createError({ statusCode: 500, message: error.message })
     }
 
-    console.log('[clear-password-flag] After update:', data)
+    console.log('[clear-password-flag] Success! Updated:', data)
 
-    return { success: true, before, after: data }
+    return { success: true, userId, updated: data }
 })
-
