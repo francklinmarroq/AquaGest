@@ -21,8 +21,7 @@ export const useProfile = () => {
             return null
         }
 
-        if (profile.value && profile.value.id === id) return profile.value
-
+        // Always fetch fresh profile data (no cache) to ensure must_change_password is current
         profileLoading.value = true
         try {
             const { data, error } = await client
