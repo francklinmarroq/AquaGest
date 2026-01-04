@@ -31,7 +31,7 @@ const fetchConsumers = async () => {
     .from('consumers')
     .select('*')
     .order('full_name', { ascending: true })
-  
+
   if (!error) {
     consumers.value = data
   }
@@ -118,28 +118,34 @@ onMounted(() => {
       <Button label="Nuevo Consumidor" icon="pi pi-plus" class="p-button-success" @click="openNew" />
     </div>
 
-    <DataTable :value="consumers" :loading="loading" stripedRows paginator :rows="10" class="p-datatable-sm shadow rounded-lg overflow-hidden border border-gray-100">
+    <DataTable :value="consumers" :loading="loading" stripedRows paginator :rows="10"
+      class="p-datatable-sm shadow rounded-lg overflow-hidden border border-gray-100">
       <Column field="full_name" header="Nombre Completo" sortable class="font-semibold text-gray-700"></Column>
       <Column field="address" header="Dirección"></Column>
       <Column field="phone" header="Teléfono"></Column>
       <Column header="Acciones" :exportable="false" style="min-width:12rem">
         <template #body="slotProps">
-          <Button icon="pi pi-plus-circle" v-tooltip="'Agregar Cargo Extra'" class="p-button-text p-button-rounded p-button-warning mr-2" @click="openExtraCharge(slotProps.data)" />
-          <Button icon="pi pi-pencil" class="p-button-text p-button-rounded p-button-success mr-2" @click="editConsumer(slotProps.data)" />
-          <Button icon="pi pi-trash" class="p-button-text p-button-rounded p-button-danger" @click="deleteConsumer(slotProps.data.id)" />
+          <Button icon="pi pi-plus-circle" v-tooltip="'Agregar Cargo Extra'"
+            class="p-button-text p-button-rounded p-button-warning mr-2" @click="openExtraCharge(slotProps.data)" />
+          <Button icon="pi pi-pencil" class="p-button-text p-button-rounded p-button-success mr-2"
+            @click="editConsumer(slotProps.data)" />
+          <Button icon="pi pi-trash" class="p-button-text p-button-rounded p-button-danger"
+            @click="deleteConsumer(slotProps.data.id)" />
         </template>
       </Column>
       <template #empty> No se encontraron consumidores. </template>
     </DataTable>
 
     <!-- Consumer Dialog -->
-    <Dialog v-model:visible="consumerDialog" :style="{width: '450px'}" header="Detalles del Consumidor" :modal="true" class="p-fluid">
+    <Dialog v-model:visible="consumerDialog" :style="{ width: '450px' }" header="Detalles del Consumidor" :modal="true"
+      class="p-fluid">
       <div class="field mb-4">
         <label for="name" class="font-bold block mb-2">Nombre Completo</label>
-        <InputText id="name" v-model.trim="consumer.full_name" required="true" autofocus :class="{'p-invalid': submitted && !consumer.full_name}" />
+        <InputText id="name" v-model.trim="consumer.full_name" required="true" autofocus
+          :class="{ 'p-invalid': submitted && !consumer.full_name }" />
       </div>
       <div class="field mb-4">
-        <label for="doc_number" class="font-bold block mb-2">Documento de Identidad (DPI/Cédula)</label>
+        <label for="doc_number" class="font-bold block mb-2">Documento de Identidad (DNI)</label>
         <InputText id="doc_number" v-model.trim="consumer.doc_number" />
       </div>
       <div class="field mb-4">
@@ -161,7 +167,8 @@ onMounted(() => {
     </Dialog>
 
     <!-- Extra Charge Dialog -->
-    <Dialog v-model:visible="extraChargeDialog" :style="{width: '400px'}" header="Agregar Cargo Extra" :modal="true" class="p-fluid">
+    <Dialog v-model:visible="extraChargeDialog" :style="{ width: '400px' }" header="Agregar Cargo Extra" :modal="true"
+      class="p-fluid">
       <div class="field mb-4">
         <label for="desc" class="font-bold block mb-2">Descripción</label>
         <InputText id="desc" v-model="extraCharge.description" placeholder="Ej: Cambio de medidor" required />

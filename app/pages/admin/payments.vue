@@ -23,7 +23,7 @@ const fetchPending = async () => {
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
-  
+
   pendingNotices.value = data || []
   loading.value = false
 }
@@ -52,15 +52,15 @@ const registerPayment = async () => {
     const { error: updateError } = await client.from('billing_notices')
       .update({ status: 'paid' })
       .eq('id', selectedNotice.value.id)
-    
+
     if (updateError) throw updateError
 
     alert('Pago registrado con éxito. Generando recibo...')
     paymentDialog.value = false
     await fetchPending()
-    
+
     // Open print view (simulated)
-    window.print() 
+    window.print()
   } catch (e: any) {
     alert('Error: ' + e.message)
   }
@@ -76,10 +76,11 @@ onMounted(() => {
   <div class="card p-4">
     <h1 class="text-2xl font-bold text-blue-900 mb-6 font-sans">Registro de Pagos (Caja)</h1>
 
-    <DataTable :value="pendingNotices" :loading="loading" stripedRows class="p-datatable-sm shadow rounded-lg overflow-hidden border border-gray-100">
+    <DataTable :value="pendingNotices" :loading="loading" stripedRows
+      class="p-datatable-sm shadow rounded-lg overflow-hidden border border-gray-100">
       <Column header="Aviso #" field="id">
         <template #body="slotProps">
-          {{ slotProps.data.id.substring(0,8) }}
+          {{ slotProps.data.id.substring(0, 8) }}
         </template>
       </Column>
       <Column header="Consumidor" field="consumer.full_name"></Column>
@@ -90,7 +91,8 @@ onMounted(() => {
       </Column>
       <Column header="Acciones">
         <template #body="slotProps">
-          <Button label="Cobrar" icon="pi pi-dollar" class="p-button-success p-button-sm" @click="openPayment(slotProps.data)" />
+          <Button label="Cobrar" icon="pi pi-dollar" class="p-button-success p-button-sm"
+            @click="openPayment(slotProps.data)" />
         </template>
       </Column>
     </DataTable>
@@ -100,7 +102,9 @@ onMounted(() => {
       <div v-if="selectedNotice" class="space-y-4 pt-2">
         <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
           <p class="text-sm text-blue-600 mb-1">Monto a Cobrar</p>
-          <p class="text-3xl font-extrabold text-blue-900">{{ currencySymbol }}{{ selectedNotice.total_amount.toFixed(2) }}</p>
+          <p class="text-3xl font-extrabold text-blue-900">{{ currencySymbol }}{{ selectedNotice.total_amount.toFixed(2)
+          }}
+          </p>
         </div>
 
         <div class="field">
@@ -110,7 +114,7 @@ onMounted(() => {
 
         <div class="field">
           <label class="font-bold block mb-2">Método de Pago</label>
-          <Select v-model="paymentForm.payment_method" :options="['Efectivo', 'Tarjeta', 'Transferencia', 'Cheque']" />
+          <Select v-model="paymentForm.payment_method" :options="['Efectivo', 'Transferencia']" />
         </div>
 
         <div class="field">
@@ -119,7 +123,8 @@ onMounted(() => {
         </div>
 
         <div class="pt-4">
-          <Button label="Registrar e Imprimir A5" icon="pi pi-print" class="p-button-primary w-full p-button-lg" @click="registerPayment" />
+          <Button label="Registrar e Imprimir A5" icon="pi pi-print" class="p-button-primary w-full p-button-lg"
+            @click="registerPayment" />
         </div>
       </div>
     </Dialog>
@@ -173,15 +178,20 @@ onMounted(() => {
   body * {
     visibility: hidden;
   }
-  #receipt-print, #receipt-print * {
+
+  #receipt-print,
+  #receipt-print * {
     visibility: visible;
   }
+
   #receipt-print {
     position: absolute;
     left: 0;
     top: 0;
-    width: 148mm; /* A5 width */
-    height: 210mm; /* A5 height */
+    width: 148mm;
+    /* A5 width */
+    height: 210mm;
+    /* A5 height */
   }
 }
 </style>
