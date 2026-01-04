@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const client = useSupabaseClient<any>()
+const user = useSupabaseUser()
 const { currencySymbol, fetchSettings: fetchAppSettings, updateCurrencySymbol } = useAppSettings()
 
 // Pricing State
@@ -153,6 +154,27 @@ const updateUserRole = async (user: any, newRole: string) => {
   }
 }
 
+const toggleUserStatus = async (user: any) => {
+  const currentUser = useSupabaseUser()
+  
+  if (user.id === currentUser.value?.id) {
+    alert('No puedes deshabilitarte a ti mismo')
+    return
+  }
+
+  const isCurrentlyDisabled = user.banned_until && new Date(user.banned_until) > new Date()
+  
+  try {
+    await $fetch('/api/admin/toggle-user-status', {
+      method: 'POST',
+      body: { userId: user.id, disabled: !isCurrentlyDisabled }
+    })
+    await fetchUsers()
+  } catch (error: any) {
+    alert('Error: ' + (error.data?.message || error.message))
+  }
+}
+
 onMounted(() => {
   fetchConfig()
 })
@@ -223,15 +245,34 @@ onMounted(() => {
         <Column header="Estado">
           <template #body="slotProps">
             <div class="flex flex-col">
-                <Tag 
-                    :value="slotProps.data.confirmed_at ? 'Activo' : 'Pendiente'" 
-                    :severity="slotProps.data.confirmed_at ? 'success' : 'warn'" 
-                    class="w-fit mb-1"
-                />
-                <small class="text-xs text-gray-400">
-                    {{ new Date(slotProps.data.created_at).toLocaleDateString() }}
-                </small>
+              <Tag 
+                v-if="slotProps.data.banned_until && new Date(slotProps.data.banned_until) > new Date()"
+                value="Deshabilitado" 
+                severity="danger" 
+                class="w-fit mb-1"
+              />
+              <Tag 
+                v-else
+                :value="slotProps.data.confirmed_at ? 'Activo' : 'Pendiente'" 
+                :severity="slotProps.data.confirmed_at ? 'success' : 'warn'" 
+                class="w-fit mb-1"
+              />
+              <small class="text-xs text-gray-400">
+                {{ new Date(slotProps.data.created_at).toLocaleDateString() }}
+              </small>
             </div>
+          </template>
+        </Column>
+        <Column header="Acciones">
+          <template #body="slotProps">
+            <Button 
+              :icon="(slotProps.data.banned_until && new Date(slotProps.data.banned_until) > new Date()) ? 'pi pi-check-circle' : 'pi pi-ban'" 
+              :class="(slotProps.data.banned_until && new Date(slotProps.data.banned_until) > new Date()) ? 'p-button-success p-button-sm' : 'p-button-danger p-button-sm p-button-outlined'"
+              :label="(slotProps.data.banned_until && new Date(slotProps.data.banned_until) > new Date()) ? 'Habilitar' : 'Deshabilitar'"
+              :disabled="slotProps.data.id === user?.id"
+              v-tooltip="slotProps.data.id === user?.id ? 'No puedes deshabilitarte' : ''"
+              @click="toggleUserStatus(slotProps.data)"
+            />
           </template>
         </Column>
       </DataTable>
