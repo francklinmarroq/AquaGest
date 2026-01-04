@@ -46,7 +46,9 @@ const updatePassword = async () => {
     }
 
     alert('Contraseña actualizada correctamente. ¡Bienvenido!')
-    router.push('/')
+    
+    // Force page reload to clear any cached profile data
+    window.location.href = '/'
   } catch (e: any) {
     errorMsg.value = e.message
   } finally {

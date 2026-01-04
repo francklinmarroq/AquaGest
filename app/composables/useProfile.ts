@@ -2,6 +2,7 @@ export interface Profile {
     id: string
     full_name: string | null
     role: 'admin' | 'reader' | null
+    must_change_password?: boolean
     created_at: string
 }
 
