@@ -19,6 +19,13 @@ async function redirectAfterLogin() {
   loading.value = true
   try {
     const p = await fetchProfile(user.value.id)
+    
+    // Check if user must change password first
+    if (p?.must_change_password) {
+      await navigateTo('/update-password')
+      return
+    }
+    
     if (p?.role === 'admin') {
       await navigateTo('/admin') 
     } else if (p?.role === 'reader') {

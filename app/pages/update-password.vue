@@ -1,41 +1,19 @@
 <script setup lang="ts">
-const client = useSupabaseClient()
+const client = useSupabaseClient<any>()
 const user = useSupabaseUser()
 const router = useRouter()
 
 const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
-const sessionLoading = ref(true)
 const errorMsg = ref('')
 
-// Wait for session to be established from the hash
+// Redirect if not logged in
 onMounted(() => {
-  // Give Supabase a moment to process the hash and establish session
-  const checkSession = () => {
-    if (user.value) {
-      sessionLoading.value = false
-    } else {
-      // If still no user after 3 seconds, something went wrong
-      setTimeout(() => {
-        if (!user.value) {
-          sessionLoading.value = false
-          errorMsg.value = 'No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de invitación.'
-        }
-      }, 3000)
-    }
+  if (!user.value) {
+    router.push('/login')
   }
-  
-  // Check immediately and watch for changes
-  checkSession()
 })
-
-// Also watch user for changes (Supabase might take a moment)
-watch(user, (newUser) => {
-  if (newUser) {
-    sessionLoading.value = false
-  }
-}, { immediate: true })
 
 const updatePassword = async () => {
   if (password.value !== confirmPassword.value) {
@@ -52,11 +30,20 @@ const updatePassword = async () => {
   errorMsg.value = ''
 
   try {
+    // Update password in Supabase Auth
     const { error } = await client.auth.updateUser({
       password: password.value
     })
 
     if (error) throw error
+
+    // Clear the must_change_password flag
+    if (user.value) {
+      await client
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', user.value.id)
+    }
 
     alert('Contraseña actualizada correctamente. ¡Bienvenido!')
     router.push('/')
@@ -70,16 +57,10 @@ const updatePassword = async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-    <!-- Loading state while session establishes -->
-    <div v-if="sessionLoading" class="text-center">
-      <ProgressSpinner />
-      <p class="text-gray-600 mt-4">Verificando tu enlace de invitación...</p>
-    </div>
-
-    <!-- Password form (only shows when session is established) -->
-    <div v-else-if="user" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+    <div v-if="user" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
       <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-gray-900">Bienvenido a AquaGest</h1>
+        <i class="pi pi-key text-blue-500 text-5xl mb-3"></i>
+        <h1 class="text-2xl font-bold text-gray-900">Establecer Nueva Contraseña</h1>
         <p class="text-gray-600 mt-2">Por favor, establece tu contraseña para continuar.</p>
         <p class="text-sm text-gray-500 mt-1">{{ user.email }}</p>
       </div>
@@ -123,17 +104,11 @@ const updatePassword = async () => {
       </form>
     </div>
 
-    <!-- Error state (session failed to establish) -->
+    <!-- Not logged in state -->
     <div v-else class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-      <i class="pi pi-times-circle text-red-500 text-5xl mb-4"></i>
-      <h2 class="text-xl font-bold text-gray-900 mb-2">Error de Autenticación</h2>
-      <p class="text-gray-600 mb-4">{{ errorMsg || 'No se pudo verificar tu enlace de invitación.' }}</p>
-      <Button 
-        label="Volver al Login" 
-        icon="pi pi-arrow-left" 
-        class="p-button-secondary" 
-        @click="router.push('/login')" 
-      />
+      <ProgressSpinner />
+      <p class="text-gray-600 mt-4">Cargando...</p>
     </div>
   </div>
 </template>
+

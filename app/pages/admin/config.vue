@@ -21,6 +21,15 @@ const users = ref<any[]>([])
 const inviteDialog = ref(false)
 const inviteForm = ref({ email: '', role: 'reader' })
 const inviting = ref(false)
+const passwordDialog = ref(false)
+const generatedPassword = ref('')
+const invitedEmail = ref('')
+
+const copyPassword = () => {
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(generatedPassword.value)
+  }
+}
 
 const fetchConfig = async () => {
   loading.value = true
@@ -110,17 +119,18 @@ const inviteUser = async () => {
 
   inviting.value = true
   try {
-    await $fetch('/api/admin/invite', {
+    const response = await $fetch('/api/admin/invite', {
       method: 'POST',
       body: inviteForm.value
-    })
-    alert('Invitación enviada correctamente.')
+    }) as { success: boolean, tempPassword: string }
+    
+    // Show the generated password to the admin
+    generatedPassword.value = response.tempPassword
+    invitedEmail.value = inviteForm.value.email
+    passwordDialog.value = true
+    
     inviteDialog.value = false
     inviteForm.value = { email: '', role: 'reader' }
-    // Refresh list (new user won't appear until they accept or trigger runs, 
-    // but typically Auth creates a user record immediately on invite? 
-    // Yes, but profile trigger runs on INSERT to auth.users. 
-    // So we might need to wait or just refresh.)
     setTimeout(fetchUsers, 1000) 
   } catch (error: any) {
     alert('Error al invitar: ' + (error.data?.message || error.message))
@@ -293,8 +303,44 @@ onMounted(() => {
       </div>
       <template #footer>
         <Button label="Cancelar" class="p-button-text" @click="inviteDialog = false" />
-        <Button label="Enviar Invitación" icon="pi pi-send" :loading="inviting" @click="inviteUser" />
+        <Button label="Crear Usuario" icon="pi pi-user-plus" :loading="inviting" @click="inviteUser" />
+      </template>
+    </Dialog>
+
+    <!-- Password Result Dialog -->
+    <Dialog v-model:visible="passwordDialog" header="Usuario Creado" :style="{width: '450px'}" :modal="true" :closable="false">
+      <div class="flex flex-col gap-4">
+        <div class="text-center">
+          <i class="pi pi-check-circle text-green-500 text-5xl mb-3"></i>
+          <p class="text-gray-700">Se ha creado el usuario:</p>
+          <p class="font-bold text-lg">{{ invitedEmail }}</p>
+        </div>
+        
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p class="text-sm text-amber-800 font-medium mb-2">
+            <i class="pi pi-key mr-1"></i> Contraseña Temporal:
+          </p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 bg-white px-4 py-2 rounded border text-lg font-mono tracking-wider">
+              {{ generatedPassword }}
+            </code>
+            <Button 
+              icon="pi pi-copy" 
+              class="p-button-outlined"
+              @click="copyPassword"
+              v-tooltip="'Copiar al portapapeles'"
+            />
+          </div>
+          <p class="text-xs text-amber-600 mt-2">
+            <i class="pi pi-info-circle mr-1"></i>
+            El usuario deberá cambiar esta contraseña en su primer inicio de sesión.
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Entendido" icon="pi pi-check" @click="passwordDialog = false" />
       </template>
     </Dialog>
   </div>
 </template>
+

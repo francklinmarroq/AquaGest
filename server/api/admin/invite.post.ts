@@ -1,6 +1,16 @@
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { createError } from 'h3'
 
+// Generate a random temporary password
+function generateTempPassword(length = 8): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    let result = ''
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return result
+}
+
 export default defineEventHandler(async (event) => {
     const user = await serverSupabaseUser(event)
     const client = serverSupabaseServiceRole(event)
@@ -9,8 +19,6 @@ export default defineEventHandler(async (event) => {
 
     // Fallback: Try to verify token manually if serverSupabaseUser fails or yields no ID
     if (!user || !user.id) {
-        // Extract ALL potential tokens using brute force
-        let cookieString = headers.cookie || ''
         let cookies: string[] = []
 
         if (Array.isArray(headers.cookie)) {
@@ -28,19 +36,16 @@ export default defineEventHandler(async (event) => {
                 continue
             }
 
-            // format: name=value
             const parts = cookieStr.split('=')
-            if (parts.length < 2) continue;
+            if (parts.length < 2) continue
 
-            let cookieValue = parts.slice(1).join('=') // In case value has =
+            let cookieValue = parts.slice(1).join('=')
 
-            // Strip 'base64-' prefix if present (Nuxt Supabase module adds this)
             if (cookieValue.startsWith('base64-')) {
                 cookieValue = cookieValue.slice(7)
             }
 
             try {
-                // Now decode using cross-platform method (Cloudflare doesn't like Buffer)
                 const decoded = globalThis.atob ? globalThis.atob(cookieValue) : Buffer.from(cookieValue, 'base64').toString()
 
                 let accessToken = ''
@@ -54,11 +59,11 @@ export default defineEventHandler(async (event) => {
                 }
 
                 if (accessToken) {
-                    const { data: { user: manualUser }, error: manualError } = await client.auth.getUser(accessToken)
+                    const { data: { user: manualUser } } = await client.auth.getUser(accessToken)
 
                     if (manualUser) {
                         validUser = manualUser
-                        break // Found a valid one!
+                        break
                     }
                 }
             } catch (e) {
@@ -67,7 +72,6 @@ export default defineEventHandler(async (event) => {
         }
 
         if (validUser) {
-            // Check profile with this user
             const { data: profile } = await client
                 .from('profiles')
                 .select('role')
@@ -78,15 +82,32 @@ export default defineEventHandler(async (event) => {
                 throw createError({ statusCode: 403, message: 'Forbidden: Admins only' })
             }
 
-            // Proceed with invitation
+            // Process invitation with validUser
             const body = await readBody(event)
             const { email, role = 'reader' } = body
             if (!email) throw createError({ statusCode: 400, message: 'Email is required' })
 
-            const { data, error } = await client.auth.admin.inviteUserByEmail(email, { data: { role } })
+            const tempPassword = generateTempPassword()
+
+            // Create user with password (instead of invite)
+            const { data: newUser, error } = await client.auth.admin.createUser({
+                email,
+                password: tempPassword,
+                email_confirm: true, // Skip email confirmation
+                user_metadata: { role }
+            })
+
             if (error) throw createError({ statusCode: 500, message: error.message })
 
-            return { success: true, data }
+            // Set must_change_password in profiles
+            if (newUser?.user?.id) {
+                await client
+                    .from('profiles')
+                    .update({ must_change_password: true } as any)
+                    .eq('id', newUser.user.id)
+            }
+
+            return { success: true, tempPassword, user: newUser }
         }
     }
 
@@ -94,7 +115,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
-    // Check if requester is admin (query profiles manually since we don't have custom claims yet)
+    // Check if requester is admin
     const { data: profile } = await client
         .from('profiles')
         .select('role')
@@ -112,14 +133,28 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, message: 'Email is required' })
     }
 
-    // Invite User via Supabase Admin API
-    const { data, error } = await client.auth.admin.inviteUserByEmail(email, {
-        data: { role } // Store role in metadata so the trigger picks it up
+    const tempPassword = generateTempPassword()
+
+    // Create user with password (instead of invite)
+    const { data: newUser, error } = await client.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Skip email confirmation
+        user_metadata: { role }
     })
 
     if (error) {
         throw createError({ statusCode: 500, message: error.message })
     }
 
-    return { success: true, data }
+    // Set must_change_password in profiles
+    if (newUser?.user?.id) {
+        await client
+            .from('profiles')
+            .update({ must_change_password: true } as any)
+            .eq('id', newUser.user.id)
+    }
+
+    return { success: true, tempPassword, user: newUser }
 })
+
